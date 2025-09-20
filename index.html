@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeviceShare - Cross-Device File & Clipboard Sharing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container">
+                <div class="header-content">
+                    <h1 class="app-title">DeviceShare</h1>
+                    <p class="app-subtitle">Share files and clipboard across all your devices</p>
+                </div>
+                <div class="connection-status">
+                    <div class="status-indicator" id="connectionStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Navigation -->
+        <nav class="main-nav">
+            <div class="container">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-tab="files">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                            <polyline points="13,2 13,9 20,9"/>
+                        </svg>
+                        File Sharing
+                    </button>
+                    <button class="nav-tab" data-tab="clipboard">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                        </svg>
+                        Clipboard Sync
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- File Sharing Tab -->
+                <div class="tab-content active" id="filesTab">
+                    <div class="content-grid">
+                        <!-- Upload Section -->
+                        <div class="upload-section">
+                            <div class="card glass-card">
+                                <div class="card__body">
+                                    <h3>Upload & Share Files</h3>
+                                    <div class="upload-area" id="uploadArea">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                            <polyline points="7,10 12,15 17,10"/>
+                                            <line x1="12" y1="15" x2="12" y2="3"/>
+                                        </svg>
+                                        <p class="upload-text">Drop files here or <span class="upload-link">click to browse</span></p>
+                                        <p class="upload-limit">Max 2GB per file</p>
+                                        <input type="file" id="fileInput" multiple hidden>
+                                    </div>
+                                    <div class="upload-progress hidden" id="uploadProgress">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="progressFill"></div>
+                                        </div>
+                                        <p class="progress-text" id="progressText">Uploading...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Code Access Section -->
+                        <div class="code-section">
+                            <div class="card glass-card">
+                                <div class="card__body">
+                                    <h3>Access Files with Code</h3>
+                                    <div class="code-input-group">
+                                        <input type="text" class="form-control code-input" id="accessCode" 
+                                               placeholder="Enter 4-digit code" maxlength="4">
+                                        <button class="btn btn--primary" id="accessBtn">Access</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Files -->
+                    <div class="recent-files">
+                        <div class="card glass-card">
+                            <div class="card__body">
+                                <h3>Your Shared Files</h3>
+                                <div class="files-list" id="filesList">
+                                    <!-- Files will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Details Modal -->
+                    <div class="modal hidden" id="fileModal">
+                        <div class="modal-overlay" id="modalOverlay"></div>
+                        <div class="modal-content glass-card">
+                            <div class="modal-header">
+                                <h3 id="modalTitle">File Details</h3>
+                                <button class="modal-close" id="modalClose">&times;</button>
+                            </div>
+                            <div class="modal-body" id="modalBody">
+                                <!-- File details will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clipboard Tab -->
+                <div class="tab-content" id="clipboardTab">
+                    <div class="clipboard-grid">
+                        <!-- Room Management -->
+                        <div class="room-section">
+                            <div class="card glass-card">
+                                <div class="card__body">
+                                    <h3>Clipboard Room</h3>
+                                    <div class="room-controls">
+                                        <div class="form-group">
+                                            <input type="text" class="form-control" id="roomCode" 
+                                                   placeholder="Room code (e.g., ROOM-A7K9)">
+                                        </div>
+                                        <div class="button-group">
+                                            <button class="btn btn--primary" id="joinRoomBtn">Join Room</button>
+                                            <button class="btn btn--secondary" id="createRoomBtn">Create New</button>
+                                        </div>
+                                    </div>
+                                    <div class="room-status hidden" id="roomStatus">
+                                        <div class="status-info">
+                                            <span class="status-label">Room:</span>
+                                            <span class="room-id" id="currentRoom">-</span>
+                                        </div>
+                                        <div class="connected-devices">
+                                            <span class="status-label">Connected:</span>
+                                            <span class="device-count" id="deviceCount">0</span>
+                                            <span class="devices-list" id="devicesList"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Clipboard -->
+                        <div class="clipboard-section">
+                            <div class="card glass-card">
+                                <div class="card__body">
+                                    <h3>Live Clipboard</h3>
+                                    <div class="clipboard-area">
+                                        <textarea class="form-control clipboard-input" id="clipboardInput" 
+                                                  placeholder="Your clipboard content will appear here and sync across devices..."
+                                                  rows="6" disabled></textarea>
+                                        <div class="clipboard-actions">
+                                            <button class="btn btn--secondary btn--sm" id="copyBtn" disabled>
+                                                Copy to Clipboard
+                                            </button>
+                                            <button class="btn btn--secondary btn--sm" id="clearBtn" disabled>
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clipboard History -->
+                    <div class="clipboard-history">
+                        <div class="card glass-card">
+                            <div class="card__body">
+                                <h3>Clipboard History</h3>
+                                <div class="history-list" id="historyList">
+                                    <!-- History items will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
