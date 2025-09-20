@@ -1,85 +1,58 @@
-// Clypse Application - Bulletproof Cross-Device File & Clipboard Sharing
+/**
+ * Clypse Application - Bulletproof Cross-Device File & Clipboard Sharing
+ * Fixed version with working functionality
+ */
 
-// Global instance
-window.clypse = null;
-
-class Clypse {
+class ClypseApp {
     constructor() {
-        // Configuration
         this.config = {
-            maxFileSize: 100000000, // 100MB
-            codeChars: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            maxFileSize: 50000000, // 50MB
+            fileExpiry: 24 * 60 * 60 * 1000, // 24 hours
             codeLength: 4,
+            codeChars: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+            pollInterval: 500, // 500ms
+            heartbeatInterval: 3000, // 3 seconds
+            deviceTimeout: 15000, // 15 seconds
+            notificationDuration: 12000, // 12 seconds
             storageKeys: {
-                files: 'clypse_files_v3',
-                rooms: 'clypse_rooms_v3',
-                theme: 'clypse_theme',
-                deviceId: 'clypse_device_id'
-            },
-            pollInterval: 1000,
-            heartbeatInterval: 5000,
-            maxDeviceInactivity: 30000
+                filePrefix: 'clypse_file_',
+                roomPrefix: 'clypse_room_',
+                deviceId: 'clypse_device_id',
+                theme: 'clypse_theme'
+            }
         };
 
-        // Initialize state
-        this.files = this.loadFiles();
         this.currentRoom = null;
         this.deviceId = this.getOrCreateDeviceId();
-        this.clipboardPollTimer = null;
+        this.pollTimer = null;
         this.heartbeatTimer = null;
-        this.fileBlobs = new Map();
-        
-        // Bind methods to ensure proper context
-        this.setupApplication = this.setupApplication.bind(this);
-        this.switchTab = this.switchTab.bind(this);
-        this.toggleTheme = this.toggleTheme.bind(this);
-        this.uploadFiles = this.uploadFiles.bind(this);
-        this.accessFile = this.accessFile.bind(this);
-        this.joinRoom = this.joinRoom.bind(this);
-        this.createRoom = this.createRoom.bind(this);
-        this.sendToRoom = this.sendToRoom.bind(this);
-        this.copyToClipboard = this.copyToClipboard.bind(this);
+        this.messageCount = 0;
+
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     init() {
-        console.log('🚀 Initializing Clypse v3.0...');
+        console.log('Initializing Clypse app...');
+        this.setupTheme();
+        this.setupEventListeners();
+        this.renderFiles();
+        this.cleanupExpiredFiles();
         
-        // Ensure DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', this.setupApplication);
-        } else {
-            // Small delay to ensure all elements are available
-            setTimeout(this.setupApplication, 50);
-        }
+        // Clean expired files periodically
+        setInterval(() => this.cleanupExpiredFiles(), 60000);
+        
+        console.log('Clypse app initialized successfully!');
     }
 
-    setupApplication() {
-        console.log('🔧 Setting up application...');
-        
-        try {
-            this.setupTheme();
-            this.setupEventListeners();
-            this.renderFiles();
-            this.renderMessages();
-            this.updateConnectionStatus();
-            this.updateDeviceCount();
-            
-            console.log('✅ Application setup complete!');
-            this.showToast('Clypse ready!', 'success');
-        } catch (error) {
-            console.error('❌ Setup failed:', error);
-            this.showToast('Setup failed: ' + error.message, 'error');
-        }
-    }
-
-    // Theme Management
     setupTheme() {
-        const savedTheme = localStorage.getItem(this.config.storageKeys.theme);
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const theme = savedTheme || systemTheme;
-        
-        this.setTheme(theme);
-        console.log('🎨 Theme set to:', theme);
+        const saved = localStorage.getItem(this.config.storageKeys.theme);
+        const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        this.setTheme(saved || system);
     }
 
     setTheme(theme) {
@@ -87,132 +60,52 @@ class Clypse {
         localStorage.setItem(this.config.storageKeys.theme, theme);
     }
 
-    toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        this.setTheme(newTheme);
-        this.showToast(`Switched to ${newTheme} mode`, 'info');
-        console.log('🎨 Theme toggled to:', newTheme);
-    }
-
-    // Robust Event Listeners Setup
     setupEventListeners() {
-        console.log('🎧 Setting up event listeners...');
+        console.log('Setting up event listeners...');
         
-        // Theme toggle with multiple fallbacks
-        this.setupThemeToggle();
-        
-        // Tab navigation with bulletproof handling
-        this.setupTabNavigation();
-        
-        // File upload with working implementation
-        this.setupFileUpload();
-        
-        // Input fields with proper event handling
-        this.setupInputFields();
-        
-        // Button handlers with proper binding
-        this.setupButtons();
-        
-        // Modal handling
-        this.setupModal();
-        
-        // Global keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.closeModal();
-            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-                e.preventDefault();
-                this.toggleTheme();
-            }
-        });
-
-        console.log('✅ All event listeners attached');
-    }
-
-    setupThemeToggle() {
+        // Theme toggle - Fixed
         const themeToggle = document.getElementById('themeToggle');
         if (themeToggle) {
-            // Remove existing listeners
-            themeToggle.replaceWith(themeToggle.cloneNode(true));
-            const newToggle = document.getElementById('themeToggle');
-            
-            newToggle.addEventListener('click', (e) => {
+            themeToggle.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('🎨 Theme toggle clicked');
-                this.toggleTheme();
+                const current = document.documentElement.getAttribute('data-theme');
+                const newTheme = current === 'dark' ? 'light' : 'dark';
+                this.setTheme(newTheme);
+                this.showToast(`Switched to ${newTheme} mode`, 'info');
+                console.log('Theme switched to:', newTheme);
             });
-            
-            console.log('✅ Theme toggle attached');
+            console.log('Theme toggle setup complete');
         }
-    }
 
-    setupTabNavigation() {
-        const tabButtons = document.querySelectorAll('.nav-tab');
-        tabButtons.forEach((tab, index) => {
-            // Clone to remove existing listeners
-            const newTab = tab.cloneNode(true);
-            tab.parentNode.replaceChild(newTab, tab);
-            
-            const tabName = newTab.getAttribute('data-tab');
-            newTab.addEventListener('click', (e) => {
+        // Tab navigation - Fixed
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('📂 Tab clicked:', tabName);
+                const tabName = tab.getAttribute('data-tab');
+                console.log('Tab clicked:', tabName);
                 this.switchTab(tabName);
             });
         });
-        
-        console.log('✅ Tab navigation attached');
-    }
+        console.log('Tab navigation setup complete');
 
-    setupFileUpload() {
-        const uploadArea = document.getElementById('uploadArea');
-        if (uploadArea) {
-            // Clone to ensure clean state
-            const newUploadArea = uploadArea.cloneNode(true);
-            uploadArea.parentNode.replaceChild(newUploadArea, uploadArea);
-            
-            newUploadArea.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('📁 Upload area clicked');
-                this.triggerFileSelect();
-            });
-            
-            // Drag and drop
-            newUploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                newUploadArea.classList.add('dragover');
-            });
-            
-            newUploadArea.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                newUploadArea.classList.remove('dragover');
-            });
-            
-            newUploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                newUploadArea.classList.remove('dragover');
-                const files = Array.from(e.dataTransfer.files);
-                console.log('📁 Files dropped:', files.length);
-                this.uploadFiles(files);
-            });
-            
-            console.log('✅ File upload attached');
-        }
-    }
+        // File upload - Fixed
+        this.setupFileUpload();
 
-    setupInputFields() {
-        // Access code input
+        // File access - Fixed
         const accessCode = document.getElementById('accessCode');
+        const accessBtn = document.getElementById('accessBtn');
+        
         if (accessCode) {
-            accessCode.value = '';
+            // Remove any conflicting attributes
+            accessCode.removeAttribute('readonly');
+            accessCode.removeAttribute('disabled');
+            
             accessCode.addEventListener('input', (e) => {
-                let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (value.length > 4) value = value.substring(0, 4);
-                e.target.value = value;
-                console.log('🔤 Access code input:', value);
+                const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                e.target.value = value.substring(0, 4);
+                console.log('Access code input:', e.target.value);
             });
             
             accessCode.addEventListener('keypress', (e) => {
@@ -221,19 +114,30 @@ class Clypse {
                     this.accessFile();
                 }
             });
-            
-            console.log('✅ Access code input attached');
+            console.log('Access code input setup complete');
         }
         
-        // Room code input
+        if (accessBtn) {
+            accessBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.accessFile();
+            });
+        }
+
+        // Room management - Fixed
         const roomCode = document.getElementById('roomCode');
+        const joinBtn = document.getElementById('joinBtn');
+        const createBtn = document.getElementById('createBtn');
+        
         if (roomCode) {
-            roomCode.value = '';
+            // Remove any conflicting attributes
+            roomCode.removeAttribute('readonly');
+            roomCode.removeAttribute('disabled');
+            
             roomCode.addEventListener('input', (e) => {
-                let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (value.length > 4) value = value.substring(0, 4);
-                e.target.value = value;
-                console.log('🏠 Room code input:', value);
+                const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                e.target.value = value.substring(0, 4);
+                console.log('Room code input:', e.target.value);
             });
             
             roomCode.addEventListener('keypress', (e) => {
@@ -242,152 +146,145 @@ class Clypse {
                     this.joinRoom();
                 }
             });
-            
-            console.log('✅ Room code input attached');
-        }
-    }
-
-    setupButtons() {
-        // Access button
-        const accessBtn = document.getElementById('accessBtn');
-        if (accessBtn) {
-            accessBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('🔍 Access button clicked');
-                this.accessFile();
-            });
+            console.log('Room code input setup complete');
         }
         
-        // Join room button
-        const joinRoomBtn = document.getElementById('joinRoomBtn');
-        if (joinRoomBtn) {
-            joinRoomBtn.addEventListener('click', (e) => {
+        if (joinBtn) {
+            joinBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🚪 Join room clicked');
                 this.joinRoom();
             });
         }
         
-        // Create room button
-        const createRoomBtn = document.getElementById('createRoomBtn');
-        if (createRoomBtn) {
-            createRoomBtn.addEventListener('click', (e) => {
+        if (createBtn) {
+            createBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🏗️ Create room clicked');
                 this.createRoom();
             });
         }
-        
-        // Send button
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) {
-            sendBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('📤 Send button clicked');
-                this.sendToRoom();
-            });
-        }
-        
-        // Copy button
-        const copyBtn = document.getElementById('copyBtn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('📋 Copy button clicked');
-                this.copyToClipboard();
-            });
-        }
-        
-        console.log('✅ All buttons attached');
-    }
 
-    setupModal() {
-        const modalClose = document.getElementById('modalClose');
-        const modalOverlay = document.getElementById('modalOverlay');
+        // Message handling - Fixed
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const copyBtn = document.getElementById('copyBtn');
         
-        if (modalClose) {
-            modalClose.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.closeModal();
-            });
-        }
-        
-        if (modalOverlay) {
-            modalOverlay.addEventListener('click', (e) => {
-                if (e.target === modalOverlay) {
-                    this.closeModal();
+        if (messageInput) {
+            messageInput.addEventListener('keypress', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMessage();
                 }
             });
         }
-    }
-
-    // Tab Management - Fixed switching
-    switchTab(tabName) {
-        console.log('🔄 Switching to tab:', tabName);
         
-        try {
-            // Update nav tabs
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.sendMessage();
             });
-            
-            const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-
-            // Update tab content - Force display changes
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-                content.style.display = 'none';
-            });
-            
-            const activeContent = document.getElementById(`${tabName}Tab`);
-            if (activeContent) {
-                activeContent.classList.add('active');
-                activeContent.style.display = 'block';
-            }
-
-            // Re-render content when switching
-            if (tabName === 'clipboard') {
-                this.renderMessages();
-            }
-            
-            console.log('✅ Tab switched to:', tabName);
-        } catch (error) {
-            console.error('❌ Tab switch failed:', error);
         }
+        
+        if (copyBtn) {
+            copyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.copyMessage();
+            });
+        }
+        
+        console.log('All event listeners setup complete');
     }
 
-    // File Upload - Working implementation
-    triggerFileSelect() {
-        console.log('📂 Triggering file selection...');
+    setupFileUpload() {
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
         
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.multiple = true;
-        fileInput.accept = '*/*';
-        fileInput.style.display = 'none';
-        
+        if (!uploadArea || !fileInput) {
+            console.error('Upload elements not found');
+            return;
+        }
+
+        console.log('Setting up file upload...');
+
+        // Click to upload - Fixed
+        uploadArea.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Upload area clicked, triggering file input...');
+            fileInput.click();
+        });
+
+        // File selection - Fixed
         fileInput.addEventListener('change', (e) => {
+            console.log('File input changed:', e.target.files.length, 'files');
             const files = Array.from(e.target.files);
-            console.log('📁 Files selected:', files.length, files.map(f => f.name));
             if (files.length > 0) {
                 this.uploadFiles(files);
             }
-            document.body.removeChild(fileInput);
+            e.target.value = ''; // Reset
+        });
+
+        // Drag and drop - Fixed
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            console.log('Files dropped:', e.dataTransfer.files.length);
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+                this.uploadFiles(files);
+            }
         });
         
-        document.body.appendChild(fileInput);
-        fileInput.click();
+        console.log('File upload setup complete');
     }
 
-    async uploadFiles(files) {
-        console.log('⬆️ Starting upload for', files.length, 'files');
+    switchTab(tabName) {
+        console.log('Switching to tab:', tabName);
         
+        // Update nav tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+        }
+
+        // Update content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        const activeContent = document.getElementById(`${tabName}-content`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+        }
+
+        // Re-render when switching to clipboard
+        if (tabName === 'clipboard') {
+            this.renderMessages();
+        }
+        
+        console.log('Tab switch complete');
+    }
+
+    // File Management
+    async uploadFiles(files) {
+        console.log('Uploading files:', files.length);
         for (const file of files) {
             if (file.size > this.config.maxFileSize) {
-                this.showToast(`File ${file.name} is too large (max 100MB)`, 'error');
+                this.showToast(`File "${file.name}" is too large (max 50MB)`, 'error');
                 continue;
             }
             await this.uploadFile(file);
@@ -396,275 +293,215 @@ class Clypse {
 
     async uploadFile(file) {
         const code = this.generateCode();
-        console.log('⬆️ Uploading:', file.name, 'Size:', this.formatFileSize(file.size), 'Code:', code);
+        console.log('Uploading file:', file.name, 'with code:', code);
         
         try {
-            this.showUploadProgress();
-            
-            // Mock upload with blob URLs
-            const upload = await this.mockFileUpload(file);
+            // Convert to base64
+            const base64 = await this.fileToBase64(file);
             
             const fileData = {
-                id: this.generateId(),
                 code: code,
-                fileName: file.name,
-                size: this.formatFileSize(file.size),
-                uploadTime: new Date().toISOString(),
-                downloadUrl: upload.url,
-                fileKey: upload.key,
-                fileType: file.type || 'application/octet-stream'
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                base64: base64,
+                uploaded: Date.now(),
+                expires: Date.now() + this.config.fileExpiry
             };
 
-            // Store blob for downloads
-            this.fileBlobs.set(code, {
-                blob: upload.blob,
-                fileName: file.name,
-                type: file.type
-            });
+            // Store in localStorage
+            const key = this.config.storageKeys.filePrefix + code;
+            localStorage.setItem(key, JSON.stringify(fileData));
 
-            this.files.unshift(fileData);
-            this.saveFiles();
             this.renderFiles();
-            this.hideUploadProgress();
-
-            this.showToast(`✅ File uploaded! Code: ${code}`, 'success');
-            console.log('✅ Upload complete:', code);
+            this.showToast(`File uploaded! Code: ${code}`, 'success');
+            console.log('File upload successful');
             
         } catch (error) {
-            console.error('❌ Upload failed:', error);
-            this.hideUploadProgress();
-            this.showToast('❌ Upload failed: ' + error.message, 'error');
+            console.error('Upload error:', error);
+            this.showToast(`Upload failed: ${error.message}`, 'error');
         }
     }
 
-    mockFileUpload(file) {
-        return new Promise((resolve) => {
+    fileToBase64(file) {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => {
-                const blob = new Blob([reader.result], { type: file.type });
-                const url = URL.createObjectURL(blob);
-                
-                setTimeout(() => {
-                    resolve({
-                        success: true,
-                        url: url,
-                        blob: blob,
-                        key: this.generateId()
-                    });
-                }, Math.random() * 1500 + 500);
-            };
-            reader.readAsArrayBuffer(file);
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
         });
     }
 
-    showUploadProgress() {
-        const uploadProgress = document.getElementById('uploadProgress');
-        if (uploadProgress) {
-            uploadProgress.classList.remove('hidden');
-            uploadProgress.style.display = 'block';
-            
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 25;
-                if (progress > 90) progress = 90;
-                
-                const progressFill = document.getElementById('progressFill');
-                const progressText = document.getElementById('progressText');
-                
-                if (progressFill) progressFill.style.width = `${progress}%`;
-                if (progressText) progressText.textContent = `Processing... ${Math.round(progress)}%`;
-            }, 200);
-            
-            this.uploadProgressInterval = interval;
-        }
-    }
-
-    hideUploadProgress() {
-        if (this.uploadProgressInterval) {
-            clearInterval(this.uploadProgressInterval);
-        }
-        
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        
-        if (progressFill) progressFill.style.width = '100%';
-        if (progressText) progressText.textContent = 'Complete!';
-        
-        setTimeout(() => {
-            const uploadProgress = document.getElementById('uploadProgress');
-            if (uploadProgress) {
-                uploadProgress.classList.add('hidden');
-                uploadProgress.style.display = 'none';
-            }
-        }, 800);
-    }
-
-    // File Access - Working implementation
     accessFile() {
-        const accessCodeInput = document.getElementById('accessCode');
-        if (!accessCodeInput) return;
+        const accessCode = document.getElementById('accessCode');
+        const code = accessCode.value.trim();
+        console.log('Accessing file with code:', code);
         
-        const code = accessCodeInput.value.trim().toUpperCase();
-        console.log('🔍 Accessing file with code:', code);
-        
-        if (!code || code.length !== 4) {
+        if (code.length !== 4) {
             this.showToast('Please enter a valid 4-digit code', 'error');
             return;
         }
 
-        const file = this.files.find(f => f.code === code);
-        if (file) {
-            console.log('✅ File found:', file.fileName);
-            this.showFileModal(file);
-            accessCodeInput.value = '';
-        } else {
-            this.showToast('No file found with code: ' + code, 'error');
+        const key = this.config.storageKeys.filePrefix + code;
+        const stored = localStorage.getItem(key);
+        
+        if (!stored) {
+            this.showToast('No file found with this code', 'error');
+            return;
         }
-    }
 
-    showFileModal(file) {
-        const modalTitle = document.getElementById('modalTitle');
-        const modalBody = document.getElementById('modalBody');
-        const modalOverlay = document.getElementById('modalOverlay');
-        
-        if (!modalTitle || !modalBody || !modalOverlay) return;
-        
-        modalTitle.textContent = file.fileName;
-        modalBody.innerHTML = `
-            <div class="file-details">
-                <div class="file-detail-item">
-                    <strong>File Name:</strong> <span>${file.fileName}</span>
-                </div>
-                <div class="file-detail-item">
-                    <strong>Size:</strong> <span>${file.size}</span>
-                </div>
-                <div class="file-detail-item">
-                    <strong>Code:</strong> <code>${file.code}</code>
-                </div>
-                <div class="file-detail-item">
-                    <strong>Uploaded:</strong> <span>${this.getRelativeTime(new Date(file.uploadTime))}</span>
-                </div>
-                <div class="file-actions-modal">
-                    <button class="access-button" onclick="window.clypse.downloadFile('${file.code}')">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7,10 12,15 17,10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download File
-                    </button>
-                    <button class="create-room-button" onclick="window.clypse.copyFileCode('${file.code}')">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                        Copy Code
-                    </button>
-                </div>
-            </div>
-        `;
-        modalOverlay.classList.remove('hidden');
-        modalOverlay.style.display = 'flex';
-    }
-
-    downloadFile(code) {
-        console.log('⬇️ Downloading file with code:', code);
-        
-        if (this.fileBlobs.has(code)) {
-            const fileData = this.fileBlobs.get(code);
-            const url = URL.createObjectURL(fileData.blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = fileData.fileName;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            this.showToast(`⬇️ Downloading ${fileData.fileName}...`, 'success');
-            this.closeModal();
-            console.log('✅ Download triggered:', fileData.fileName);
-        } else {
-            this.showToast('File not available for download', 'error');
-        }
-    }
-
-    async copyFileCode(code) {
         try {
-            await navigator.clipboard.writeText(code);
-            this.showToast(`📋 Code ${code} copied!`, 'success');
-        } catch (error) {
-            const textArea = document.createElement('textarea');
-            textArea.value = code;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            this.showToast(`📋 Code ${code} copied!`, 'success');
-        }
-    }
-
-    closeModal() {
-        const modalOverlay = document.getElementById('modalOverlay');
-        if (modalOverlay) {
-            modalOverlay.classList.add('hidden');
-            modalOverlay.style.display = 'none';
-        }
-    }
-
-    // Room Management - Working implementation
-    createRoom() {
-        const roomCode = this.generateCode();
-        console.log('🏗️ Creating room:', roomCode);
-        
-        this.switchTab('clipboard');
-        
-        setTimeout(() => {
-            const roomCodeInput = document.getElementById('roomCode');
-            if (roomCodeInput) {
-                roomCodeInput.value = roomCode;
+            const fileData = JSON.parse(stored);
+            
+            // Check if expired
+            if (Date.now() > fileData.expires) {
+                localStorage.removeItem(key);
+                this.showToast('File has expired', 'error');
+                this.renderFiles();
+                return;
             }
-            this.joinRoom();
-        }, 100);
+
+            this.downloadFile(fileData);
+            accessCode.value = '';
+            
+        } catch (error) {
+            console.error('Access error:', error);
+            this.showToast('Error accessing file', 'error');
+        }
+    }
+
+    downloadFile(fileData) {
+        console.log('Downloading file:', fileData.name);
+        
+        try {
+            // Create download link from base64
+            const link = document.createElement('a');
+            link.href = fileData.base64;
+            link.download = fileData.name;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            
+            // Trigger download - Special handling for mobile
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                // Mobile: Multiple click attempts
+                link.click();
+                setTimeout(() => link.click(), 100);
+                setTimeout(() => link.click(), 200);
+                console.log('Mobile download triggered');
+            } else {
+                // Desktop: Single click
+                link.click();
+                console.log('Desktop download triggered');
+            }
+            
+            // Cleanup
+            setTimeout(() => {
+                if (link.parentNode) {
+                    document.body.removeChild(link);
+                }
+            }, 1000);
+
+            this.showToast(`Downloaded: ${fileData.name}`, 'success');
+            
+        } catch (error) {
+            console.error('Download error:', error);
+            this.showToast('Download failed', 'error');
+        }
+    }
+
+    // Room Management
+    createRoom() {
+        const code = this.generateCode();
+        console.log('Creating room with code:', code);
+        
+        const roomCode = document.getElementById('roomCode');
+        if (roomCode) {
+            roomCode.value = code;
+        }
+        
+        // Initialize empty room
+        const roomData = {
+            code: code,
+            messages: [],
+            devices: {},
+            created: Date.now()
+        };
+        
+        const key = this.config.storageKeys.roomPrefix + code;
+        localStorage.setItem(key, JSON.stringify(roomData));
+        
+        this.joinRoom();
     }
 
     joinRoom() {
-        const roomCodeInput = document.getElementById('roomCode');
-        if (!roomCodeInput) return;
+        const roomCode = document.getElementById('roomCode');
+        const code = roomCode.value.trim();
+        console.log('Joining room:', code);
         
-        const roomCode = roomCodeInput.value.trim().toUpperCase();
-        console.log('🚪 Joining room:', roomCode);
-        
-        if (!roomCode || roomCode.length !== 4) {
+        if (code.length !== 4) {
             this.showToast('Please enter a valid 4-digit room code', 'error');
             return;
         }
 
+        const key = this.config.storageKeys.roomPrefix + code;
+        let roomData = localStorage.getItem(key);
+        
+        if (!roomData) {
+            // Create room if it doesn't exist
+            roomData = {
+                code: code,
+                messages: [],
+                devices: {},
+                created: Date.now()
+            };
+            localStorage.setItem(key, JSON.stringify(roomData));
+        } else {
+            roomData = JSON.parse(roomData);
+        }
+
+        // Leave current room
         if (this.currentRoom) {
             this.leaveRoom();
         }
 
-        this.currentRoom = roomCode;
+        this.currentRoom = code;
+        this.messageCount = roomData.messages.length;
+        
         this.showRoomStatus();
-        this.enableClipboard();
-        this.startClipboardSync();
+        this.enableMessageInput();
+        this.startPolling();
         this.startHeartbeat();
-
-        this.showToast(`🏠 Joined room: ${roomCode}`, 'success');
         this.renderMessages();
+        
+        this.showToast(`Joined room: ${code}`, 'success');
     }
 
     leaveRoom() {
-        if (this.clipboardPollTimer) clearInterval(this.clipboardPollTimer);
-        if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
-        
-        if (this.currentRoom) {
-            const deviceKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_devices`;
-            const devices = JSON.parse(localStorage.getItem(deviceKey) || '{}');
-            delete devices[this.deviceId];
-            localStorage.setItem(deviceKey, JSON.stringify(devices));
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
         }
+        
+        if (this.heartbeatTimer) {
+            clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+        }
+
+        if (this.currentRoom) {
+            // Remove device from room
+            const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                const roomData = JSON.parse(stored);
+                delete roomData.devices[this.deviceId];
+                localStorage.setItem(key, JSON.stringify(roomData));
+            }
+        }
+        
+        this.currentRoom = null;
+        this.hideRoomStatus();
+        this.disableMessageInput();
     }
 
     showRoomStatus() {
@@ -673,178 +510,223 @@ class Clypse {
         
         if (roomStatus && currentRoom) {
             roomStatus.classList.remove('hidden');
-            roomStatus.style.display = 'block';
             currentRoom.textContent = this.currentRoom;
             this.updateDeviceCount();
         }
     }
 
-    enableClipboard() {
-        const clipboardInput = document.getElementById('clipboardInput');
+    hideRoomStatus() {
+        const roomStatus = document.getElementById('roomStatus');
+        if (roomStatus) {
+            roomStatus.classList.add('hidden');
+        }
+    }
+
+    enableMessageInput() {
+        const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
         const copyBtn = document.getElementById('copyBtn');
-
-        if (clipboardInput) {
-            clipboardInput.disabled = false;
-            clipboardInput.placeholder = 'Type or paste content, then click "Send to Room"...';
+        
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.placeholder = 'Type your message and click "Send to Room"...';
         }
-
+        
         if (sendBtn) sendBtn.disabled = false;
         if (copyBtn) copyBtn.disabled = false;
     }
 
-    // Clipboard Management - Working implementation
-    sendToRoom() {
-        if (!this.currentRoom) {
-            this.showToast('Please join a room first', 'error');
-            return;
+    disableMessageInput() {
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        
+        if (messageInput) {
+            messageInput.disabled = true;
+            messageInput.placeholder = 'Join a room to start sharing messages...';
+            messageInput.value = '';
         }
-
-        const clipboardInput = document.getElementById('clipboardInput');
-        if (!clipboardInput) return;
         
-        const content = clipboardInput.value.trim();
-        if (!content) {
-            this.showToast('No content to send', 'error');
-            return;
-        }
-
-        console.log('📤 Sending to room:', this.currentRoom, 'Content:', content.substring(0, 50) + '...');
-
-        const messageKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_messages`;
-        const messages = JSON.parse(localStorage.getItem(messageKey) || '[]');
-        
-        const message = {
-            id: this.generateId(),
-            content: content,
-            timestamp: Date.now(),
-            device: this.getDeviceName(),
-            deviceId: this.deviceId
-        };
-
-        messages.unshift(message);
-        if (messages.length > 50) messages.splice(50);
-
-        localStorage.setItem(messageKey, JSON.stringify(messages));
-        
-        this.showToast('📤 Message sent to room!', 'success');
-        this.renderMessages();
-        clipboardInput.value = '';
-        
-        console.log('✅ Message sent successfully');
+        if (sendBtn) sendBtn.disabled = true;
+        if (copyBtn) copyBtn.disabled = true;
     }
 
-    async copyToClipboard() {
-        const clipboardInput = document.getElementById('clipboardInput');
-        if (!clipboardInput) return;
-        
-        const content = clipboardInput.value;
-        if (!content.trim()) {
-            this.showToast('No content to copy', 'error');
-            return;
-        }
-
-        try {
-            await navigator.clipboard.writeText(content);
-            this.showToast('📋 Copied to clipboard!', 'success');
-        } catch (error) {
-            const textArea = document.createElement('textarea');
-            textArea.value = content;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            this.showToast('📋 Copied to clipboard!', 'success');
-        }
+    startPolling() {
+        this.pollTimer = setInterval(() => {
+            this.checkForNewMessages();
+            this.updateDeviceCount();
+        }, this.config.pollInterval);
     }
 
-    startClipboardSync() {
+    checkForNewMessages() {
         if (!this.currentRoom) return;
         
-        this.clipboardPollTimer = setInterval(() => {
+        const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
+        
+        const roomData = JSON.parse(stored);
+        if (roomData.messages.length !== this.messageCount) {
+            this.messageCount = roomData.messages.length;
             this.renderMessages();
-        }, this.config.pollInterval);
+        }
     }
 
     startHeartbeat() {
         this.sendHeartbeat();
-        
         this.heartbeatTimer = setInterval(() => {
             this.sendHeartbeat();
-            this.updateDeviceCount();
         }, this.config.heartbeatInterval);
     }
 
     sendHeartbeat() {
         if (!this.currentRoom) return;
         
-        const deviceKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_devices`;
-        const devices = JSON.parse(localStorage.getItem(deviceKey) || '{}');
-        devices[this.deviceId] = {
-            timestamp: Date.now(),
-            name: this.getDeviceName()
+        const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
+        
+        const roomData = JSON.parse(stored);
+        roomData.devices[this.deviceId] = {
+            lastSeen: Date.now(),
+            name: this.getDeviceType()
         };
-        localStorage.setItem(deviceKey, JSON.stringify(devices));
+        
+        localStorage.setItem(key, JSON.stringify(roomData));
     }
 
     updateDeviceCount() {
-        const deviceCountEl = document.getElementById('deviceCount');
-        const headerDeviceCountEl = document.getElementById('headerDeviceCount');
+        const deviceCount = document.getElementById('deviceCount');
+        if (!deviceCount || !this.currentRoom) return;
         
-        let activeDeviceCount = 0;
+        const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
         
-        if (this.currentRoom) {
-            const deviceKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_devices`;
-            const devices = JSON.parse(localStorage.getItem(deviceKey) || '{}');
-            const now = Date.now();
-            
-            const activeDevices = Object.entries(devices).filter(([id, device]) => 
-                now - device.timestamp < this.config.maxDeviceInactivity
-            );
-
-            activeDeviceCount = activeDevices.length;
-        }
-
-        if (deviceCountEl) deviceCountEl.textContent = activeDeviceCount;
-        if (headerDeviceCountEl) headerDeviceCountEl.textContent = activeDeviceCount;
+        const roomData = JSON.parse(stored);
+        const now = Date.now();
+        const activeDevices = Object.values(roomData.devices).filter(
+            device => now - device.lastSeen < this.config.deviceTimeout
+        );
+        
+        deviceCount.textContent = activeDevices.length;
     }
 
-    // Rendering Methods
+    // Message Management
+    sendMessage() {
+        if (!this.currentRoom) {
+            this.showToast('Please join a room first', 'error');
+            return;
+        }
+        
+        const messageInput = document.getElementById('messageInput');
+        const text = messageInput.value.trim();
+        console.log('Sending message:', text);
+        
+        if (!text) {
+            this.showToast('Please enter a message', 'error');
+            return;
+        }
+        
+        const message = {
+            id: this.generateId(),
+            text: text,
+            device: this.getDeviceType(),
+            timestamp: Date.now()
+        };
+        
+        const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
+        
+        const roomData = JSON.parse(stored);
+        roomData.messages.unshift(message); // Add to beginning
+        
+        // Keep only last 100 messages
+        if (roomData.messages.length > 100) {
+            roomData.messages = roomData.messages.slice(0, 100);
+        }
+        
+        localStorage.setItem(key, JSON.stringify(roomData));
+        
+        messageInput.value = '';
+        this.messageCount = roomData.messages.length;
+        this.renderMessages();
+        
+        this.showToast('Message sent to room!', 'success');
+        console.log('Message sent successfully');
+    }
+
+    async copyMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const text = messageInput.value.trim();
+        
+        if (!text) {
+            this.showToast('No message to copy', 'error');
+            return;
+        }
+        
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('Message copied to clipboard!', 'success');
+        } catch (error) {
+            // Fallback for older browsers
+            this.fallbackCopy(text);
+            this.showToast('Message copied to clipboard!', 'success');
+        }
+    }
+
+    fallbackCopy(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+
+    // Rendering
     renderFiles() {
         const filesList = document.getElementById('filesList');
         if (!filesList) return;
         
-        if (this.files.length === 0) {
+        const files = this.getAllFiles();
+        
+        if (files.length === 0) {
             filesList.innerHTML = `
                 <div class="empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
                         <polyline points="13,2 13,9 20,9"/>
                     </svg>
                     <p>No files uploaded yet</p>
-                    <p style="font-size: 0.85rem; margin-top: 8px;">Upload files to get started</p>
+                    <small>Upload files to start sharing across devices</small>
                 </div>
             `;
             return;
         }
 
-        filesList.innerHTML = this.files.map(file => `
-            <div class="file-item" onclick="window.clypse.showFileModal(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+        filesList.innerHTML = files.map(file => `
+            <div class="file-item">
                 <div class="file-info">
-                    <div class="file-name">${file.fileName}</div>
+                    <div class="file-name">${this.escapeHtml(file.name)}</div>
                     <div class="file-meta">
-                        <span>${file.size}</span>
-                        <span>${this.getRelativeTime(new Date(file.uploadTime))}</span>
+                        <span>${this.formatFileSize(file.size)}</span>
+                        <span>${this.formatTime(file.uploaded)}</span>
+                        <span>Expires: ${this.formatTime(file.expires)}</span>
                     </div>
                 </div>
                 <div class="file-actions">
-                    <div class="file-code" onclick="event.stopPropagation(); window.clypse.copyFileCode('${file.code}')">
+                    <div class="file-code" onclick="window.app.copyFileCode('${file.code}')">
                         ${file.code}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                         </svg>
                     </div>
+                    <button class="btn btn-primary" onclick="window.app.downloadFileByCode('${file.code}')">Download</button>
                 </div>
             </div>
         `).join('');
@@ -857,70 +739,126 @@ class Clypse {
         if (!this.currentRoom) {
             messagesList.innerHTML = `
                 <div class="empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                     </svg>
-                    <p>Join a room to see live messages</p>
+                    <p>Join a room to see messages</p>
+                    <small>Create or join a room to start syncing messages</small>
                 </div>
             `;
             return;
         }
 
-        const messageKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_messages`;
-        const messages = JSON.parse(localStorage.getItem(messageKey) || '[]');
+        const key = this.config.storageKeys.roomPrefix + this.currentRoom;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
+        
+        const roomData = JSON.parse(stored);
+        const messages = roomData.messages || [];
         
         if (messages.length === 0) {
             messagesList.innerHTML = `
                 <div class="empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                     </svg>
                     <p>No messages yet</p>
-                    <p style="font-size: 0.85rem; margin-top: 8px;">Send your first message!</p>
+                    <small>Send the first message to start the conversation</small>
                 </div>
             `;
             return;
         }
 
         messagesList.innerHTML = messages.map(message => `
-            <div class="message-item" onclick="window.clypse.copyMessage('${message.id}')">
-                <div class="message-content">${this.escapeHtml(message.content.substring(0, 200))}</div>
+            <div class="message-item" onclick="window.app.copyMessageFromHistory('${this.escapeHtml(message.text).replace(/'/g, '&#39;')}')">
+                <div class="message-content">${this.escapeHtml(message.text)}</div>
                 <div class="message-meta">
-                    <span>${this.getRelativeTime(new Date(message.timestamp))}</span>
                     <span>${message.device}</span>
+                    <span>${this.formatTime(message.timestamp)}</span>
                 </div>
             </div>
         `).join('');
     }
 
-    async copyMessage(messageId) {
-        if (!this.currentRoom) return;
-        
-        const messageKey = `${this.config.storageKeys.rooms}_${this.currentRoom}_messages`;
-        const messages = JSON.parse(localStorage.getItem(messageKey) || '[]');
-        const message = messages.find(m => m.id === messageId);
-        
-        if (message) {
-            try {
-                await navigator.clipboard.writeText(message.content);
-                const clipboardInput = document.getElementById('clipboardInput');
-                if (clipboardInput) clipboardInput.value = message.content;
-                this.showToast('📋 Message copied!', 'success');
-            } catch (error) {
-                this.showToast('❌ Failed to copy message', 'error');
+    // Utility Methods
+    getAllFiles() {
+        const files = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(this.config.storageKeys.filePrefix)) {
+                try {
+                    const fileData = JSON.parse(localStorage.getItem(key));
+                    if (Date.now() <= fileData.expires) {
+                        files.push(fileData);
+                    }
+                } catch (error) {
+                    // Invalid file data, ignore
+                }
             }
+        }
+        return files.sort((a, b) => b.uploaded - a.uploaded);
+    }
+
+    cleanupExpiredFiles() {
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(this.config.storageKeys.filePrefix)) {
+                try {
+                    const fileData = JSON.parse(localStorage.getItem(key));
+                    if (Date.now() > fileData.expires) {
+                        toRemove.push(key);
+                    }
+                } catch (error) {
+                    toRemove.push(key);
+                }
+            }
+        }
+        
+        toRemove.forEach(key => localStorage.removeItem(key));
+        if (toRemove.length > 0) {
+            this.renderFiles();
         }
     }
 
-    // Utility Methods
+    // Exposed methods for onclick handlers
+    copyFileCode(code) {
+        this.fallbackCopy(code);
+        this.showToast(`Code ${code} copied!`, 'success');
+    }
+
+    downloadFileByCode(code) {
+        const key = this.config.storageKeys.filePrefix + code;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            const fileData = JSON.parse(stored);
+            this.downloadFile(fileData);
+        }
+    }
+
+    copyMessageFromHistory(messageText) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.value = messageText;
+        }
+        this.fallbackCopy(messageText);
+        this.showToast('Message copied and loaded!', 'success');
+    }
+
     generateCode() {
         let code = '';
         for (let i = 0; i < this.config.codeLength; i++) {
             code += this.config.codeChars.charAt(Math.floor(Math.random() * this.config.codeChars.length));
         }
-        if (this.files.some(f => f.code === code)) return this.generateCode();
+        
+        // Ensure uniqueness
+        const key = this.config.storageKeys.filePrefix + code;
+        if (localStorage.getItem(key)) {
+            return this.generateCode();
+        }
+        
         return code;
     }
 
@@ -937,13 +875,14 @@ class Clypse {
         return deviceId;
     }
 
-    getDeviceName() {
-        const userAgent = navigator.userAgent;
-        if (/Mobile/.test(userAgent)) return 'Mobile';
-        if (/Tablet/.test(userAgent)) return 'Tablet';
-        if (/Mac/.test(userAgent)) return 'Mac';
-        if (/Windows/.test(userAgent)) return 'Windows';
-        return 'Desktop';
+    getDeviceType() {
+        const ua = navigator.userAgent;
+        if (/iPhone/i.test(ua)) return '📱 iPhone';
+        if (/iPad/i.test(ua)) return '📱 iPad';
+        if (/Android/i.test(ua)) return '📱 Android';
+        if (/Mac/i.test(ua)) return '💻 Mac';
+        if (/Windows/i.test(ua)) return '💻 Windows';
+        return '💻 Desktop';
     }
 
     formatFileSize(bytes) {
@@ -954,79 +893,57 @@ class Clypse {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    getRelativeTime(date) {
+    formatTime(timestamp) {
         const now = new Date();
-        const diffInSeconds = Math.floor((now - date) / 1000);
+        const date = new Date(timestamp);
+        const diff = Math.floor((now - date) / 1000);
         
-        if (diffInSeconds < 60) return 'Just now';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-        if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+        
         return date.toLocaleDateString();
     }
 
     escapeHtml(text) {
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return text.replace(/[&<>"']/g, m => map[m]);
-    }
-
-    loadFiles() {
-        const stored = localStorage.getItem(this.config.storageKeys.files);
-        return stored ? JSON.parse(stored) : [];
-    }
-
-    saveFiles() {
-        localStorage.setItem(this.config.storageKeys.files, JSON.stringify(this.files));
-    }
-
-    updateConnectionStatus() {
-        const statusDot = document.querySelector('.status-dot');
-        if (statusDot) {
-            statusDot.style.background = navigator.onLine ? 'var(--success)' : 'var(--error)';
-        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toastContainer');
-        if (!toastContainer) return;
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
         
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
         
-        toastContainer.appendChild(toast);
+        container.appendChild(toast);
         
+        // Auto remove after configured duration
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.style.animation = 'slideOut 0.3s ease-in forwards';
                 setTimeout(() => {
-                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                    if (toast.parentNode) {
+                        container.removeChild(toast);
+                    }
                 }, 300);
             }
-        }, 4000);
+        }, this.config.notificationDuration);
     }
 }
 
-// Add slideOut animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
+// Initialize app and make it globally accessible
+window.app = new ClypseApp();
 
-// Initialize application
-console.log('🚀 Clypse v3.0 - Bulletproof Edition');
-window.clypse = new Clypse();
-window.clypse.init();
-
-// Event handlers
-window.addEventListener('online', () => window.clypse?.updateConnectionStatus());
-window.addEventListener('offline', () => window.clypse?.updateConnectionStatus());
+// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
-    if (window.clypse?.currentRoom) window.clypse.leaveRoom();
+    if (window.app && window.app.currentRoom) {
+        window.app.leaveRoom();
+    }
 });
 
-console.log('✅ Clypse loaded and ready!');
+console.log('Clypse v4.0 - Bulletproof Edition Loaded!');
