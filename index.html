@@ -3,44 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeviceShare - Cross-Device File & Clipboard Sharing</title>
+    <title>Clypse - Cross-Device File & Clipboard Sharing</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
-        <header class="app-header">
+        <header class="app-header glass-surface">
             <div class="container">
                 <div class="header-content">
-                    <h1 class="app-title">DeviceShare</h1>
-                    <p class="app-subtitle">Share files and clipboard across all your devices</p>
-                </div>
-                <div class="connection-status">
-                    <div class="status-indicator" id="connectionStatus">
-                        <span class="status-dot"></span>
-                        <span class="status-text">Connected</span>
+                    <div class="brand-section">
+                        <h1 class="app-title">Clypse</h1>
+                        <p class="app-subtitle">Share files and clipboard across all your devices</p>
+                    </div>
+                    <div class="header-controls">
+                        <div class="theme-toggle-container">
+                            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                                <div class="toggle-slider">
+                                    <div class="toggle-icon">
+                                        <svg class="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="5"/>
+                                            <line x1="12" y1="1" x2="12" y2="3"/>
+                                            <line x1="12" y1="21" x2="12" y2="23"/>
+                                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                            <line x1="1" y1="12" x2="3" y2="12"/>
+                                            <line x1="21" y1="12" x2="23" y2="12"/>
+                                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                                        </svg>
+                                        <svg class="moon-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="connection-status">
+                            <div class="status-indicator" id="connectionStatus">
+                                <div class="status-dot"></div>
+                                <span class="status-text">Online</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </header>
 
         <!-- Main Navigation -->
-        <nav class="main-nav">
+        <nav class="main-nav glass-surface">
             <div class="container">
                 <div class="nav-tabs">
                     <button class="nav-tab active" data-tab="files">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                            <polyline points="13,2 13,9 20,9"/>
-                        </svg>
-                        File Sharing
+                        <div class="tab-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                                <polyline points="13,2 13,9 20,9"/>
+                            </svg>
+                        </div>
+                        <span>File Sharing</span>
                     </button>
                     <button class="nav-tab" data-tab="clipboard">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                        </svg>
-                        Clipboard Sync
+                        <div class="tab-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                            </svg>
+                        </div>
+                        <span>Clipboard Sync</span>
                     </button>
                 </div>
             </div>
@@ -54,15 +87,19 @@
                     <div class="content-grid">
                         <!-- Upload Section -->
                         <div class="upload-section">
-                            <div class="card glass-card">
-                                <div class="card__body">
+                            <div class="glass-card">
+                                <div class="card-header">
                                     <h3>Upload & Share Files</h3>
+                                </div>
+                                <div class="card-body">
                                     <div class="upload-area" id="uploadArea">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                            <polyline points="7,10 12,15 17,10"/>
-                                            <line x1="12" y1="15" x2="12" y2="3"/>
-                                        </svg>
+                                        <div class="upload-icon">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                <polyline points="7,10 12,15 17,10"/>
+                                                <line x1="12" y1="15" x2="12" y2="3"/>
+                                            </svg>
+                                        </div>
                                         <p class="upload-text">Drop files here or <span class="upload-link">click to browse</span></p>
                                         <p class="upload-limit">Max 2GB per file</p>
                                         <input type="file" id="fileInput" multiple hidden>
@@ -79,13 +116,22 @@
 
                         <!-- Code Access Section -->
                         <div class="code-section">
-                            <div class="card glass-card">
-                                <div class="card__body">
-                                    <h3>Access Files with Code</h3>
-                                    <div class="code-input-group">
-                                        <input type="text" class="form-control code-input" id="accessCode" 
+                            <div class="glass-card">
+                                <div class="card-header">
+                                    <h3>Access with Code</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-input-container">
+                                        <input type="text" class="code-input" id="accessCode" 
                                                placeholder="Enter 4-digit code" maxlength="4">
-                                        <button class="btn btn--primary" id="accessBtn">Access</button>
+                                        <button class="access-button" id="accessBtn">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                                                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                                                <path d="M3 12h6m6 0h6"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -94,26 +140,14 @@
 
                     <!-- Recent Files -->
                     <div class="recent-files">
-                        <div class="card glass-card">
-                            <div class="card__body">
+                        <div class="glass-card">
+                            <div class="card-header">
                                 <h3>Your Shared Files</h3>
+                            </div>
+                            <div class="card-body">
                                 <div class="files-list" id="filesList">
                                     <!-- Files will be populated here -->
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- File Details Modal -->
-                    <div class="modal hidden" id="fileModal">
-                        <div class="modal-overlay" id="modalOverlay"></div>
-                        <div class="modal-content glass-card">
-                            <div class="modal-header">
-                                <h3 id="modalTitle">File Details</h3>
-                                <button class="modal-close" id="modalClose">&times;</button>
-                            </div>
-                            <div class="modal-body" id="modalBody">
-                                <!-- File details will be populated here -->
                             </div>
                         </div>
                     </div>
@@ -124,28 +158,35 @@
                     <div class="clipboard-grid">
                         <!-- Room Management -->
                         <div class="room-section">
-                            <div class="card glass-card">
-                                <div class="card__body">
+                            <div class="glass-card">
+                                <div class="card-header">
                                     <h3>Clipboard Room</h3>
+                                </div>
+                                <div class="card-body">
                                     <div class="room-controls">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="roomCode" 
-                                                   placeholder="Room code (e.g., ROOM-A7K9)">
+                                        <div class="room-input-container">
+                                            <input type="text" class="room-input" id="roomCode" 
+                                                   placeholder="Enter 4-digit code" maxlength="4">
+                                            <button class="join-button" id="joinRoomBtn">Join</button>
                                         </div>
-                                        <div class="button-group">
-                                            <button class="btn btn--primary" id="joinRoomBtn">Join Room</button>
-                                            <button class="btn btn--secondary" id="createRoomBtn">Create New</button>
-                                        </div>
+                                        <button class="create-room-button" id="createRoomBtn">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                            </svg>
+                                            Create New Room
+                                        </button>
                                     </div>
                                     <div class="room-status hidden" id="roomStatus">
-                                        <div class="status-info">
-                                            <span class="status-label">Room:</span>
-                                            <span class="room-id" id="currentRoom">-</span>
-                                        </div>
-                                        <div class="connected-devices">
-                                            <span class="status-label">Connected:</span>
-                                            <span class="device-count" id="deviceCount">0</span>
-                                            <span class="devices-list" id="devicesList"></span>
+                                        <div class="room-info">
+                                            <div class="room-detail">
+                                                <span class="room-label">Room Code:</span>
+                                                <span class="room-code" id="currentRoom">-</span>
+                                            </div>
+                                            <div class="devices-info">
+                                                <span class="devices-label">Connected Devices:</span>
+                                                <span class="device-count" id="deviceCount">0</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -154,18 +195,28 @@
 
                         <!-- Live Clipboard -->
                         <div class="clipboard-section">
-                            <div class="card glass-card">
-                                <div class="card__body">
+                            <div class="glass-card">
+                                <div class="card-header">
                                     <h3>Live Clipboard</h3>
+                                </div>
+                                <div class="card-body">
                                     <div class="clipboard-area">
-                                        <textarea class="form-control clipboard-input" id="clipboardInput" 
-                                                  placeholder="Your clipboard content will appear here and sync across devices..."
+                                        <textarea class="clipboard-input" id="clipboardInput" 
+                                                  placeholder="Join a room to start syncing clipboard content..."
                                                   rows="6" disabled></textarea>
                                         <div class="clipboard-actions">
-                                            <button class="btn btn--secondary btn--sm" id="copyBtn" disabled>
-                                                Copy to Clipboard
+                                            <button class="clipboard-btn copy-btn" id="copyBtn" disabled>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                                </svg>
+                                                Copy
                                             </button>
-                                            <button class="btn btn--secondary btn--sm" id="clearBtn" disabled>
+                                            <button class="clipboard-btn clear-btn" id="clearBtn" disabled>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                                </svg>
                                                 Clear
                                             </button>
                                         </div>
@@ -177,9 +228,11 @@
 
                     <!-- Clipboard History -->
                     <div class="clipboard-history">
-                        <div class="card glass-card">
-                            <div class="card__body">
+                        <div class="glass-card">
+                            <div class="card-header">
                                 <h3>Clipboard History</h3>
+                            </div>
+                            <div class="card-body">
                                 <div class="history-list" id="historyList">
                                     <!-- History items will be populated here -->
                                 </div>
@@ -190,7 +243,25 @@
             </div>
         </main>
 
-        <!-- Toast Notifications -->
+        <!-- File Modal -->
+        <div class="modal-overlay hidden" id="modalOverlay">
+            <div class="modal glass-card" id="fileModal">
+                <div class="modal-header">
+                    <h3 id="modalTitle">File Details</h3>
+                    <button class="modal-close" id="modalClose">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- File details will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
         <div class="toast-container" id="toastContainer"></div>
     </div>
 
