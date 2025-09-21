@@ -3,167 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clypse - WebRTC P2P File & Clipboard Sharing</title>
+    <title>Clypse - Simple Clipboard Sync</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="py-16">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1>Clypse</h1>
-                    <p class="mt-8" style="color: var(--color-text-secondary);">WebRTC P2P File Sharing + GitHub Gist Clipboard</p>
-                </div>
-                <div class="connection-status">
-                    <div class="status-dot"></div>
-                    <span id="statusText">Online</span>
-                </div>
-            </div>
+        <header class="header">
+            <h1>Clypse</h1>
+            <p>Simple cross-device clipboard sync</p>
         </header>
 
-        <!-- Navigation -->
-        <nav class="nav-container mb-8">
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="files">
-                    File Sharing
-                </button>
-                <button class="nav-tab" data-tab="clipboard">
-                    Clipboard Sync
-                </button>
-            </div>
-        </nav>
-
-        <!-- File Sharing Tab -->
-        <div id="filesTab" class="tab-content active">
-            <div class="content-grid">
-                <!-- Upload Section -->
-                <div class="card">
-                    <div class="card__body">
-                        <h3 class="mb-8">Upload & Share Files</h3>
-                        <div class="upload-area" id="uploadArea">
-                            <div class="upload-icon">📁</div>
-                            <p>Drop files here or <span class="upload-link">click to browse</span></p>
-                            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">Unlimited size via WebRTC P2P</p>
-                            <input type="file" id="fileInput" multiple hidden>
-                        </div>
-                        <div class="upload-progress hidden" id="uploadProgress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progressFill"></div>
-                            </div>
-                            <p id="progressText">Processing...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Access Section -->
-                <div class="card">
-                    <div class="card__body">
-                        <h3 class="mb-8">Access with Code</h3>
-                        <div class="flex gap-8">
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="accessCode" 
-                                   placeholder="Enter 4-digit code" 
-                                   maxlength="4"
-                                   style="text-transform: uppercase; text-align: center; font-weight: 600;">
-                            <button class="btn btn--primary" id="accessBtn">Connect</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Offers -->
-            <div class="card mt-8">
-                <div class="card__body">
-                    <h3 class="mb-8">Your Shared Files</h3>
-                    <div id="filesList">
-                        <!-- Files will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Clipboard Tab -->
-        <div id="clipboardTab" class="tab-content">
-            <div class="content-grid">
-                <!-- Room Management -->
-                <div class="card">
-                    <div class="card__body">
-                        <h3 class="mb-8">Clipboard Room</h3>
-                        <div class="room-controls">
-                            <div class="flex gap-8 mb-8">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="roomCode" 
-                                       placeholder="Room code" 
-                                       maxlength="4"
-                                       style="text-transform: uppercase; text-align: center;">
-                                <button class="btn btn--primary" id="joinRoomBtn">Join</button>
-                            </div>
-                            <button class="btn btn--secondary btn--full-width" id="createRoomBtn">Create New Room</button>
-                        </div>
-                        
-                        <div class="room-status hidden" id="roomStatus">
-                            <div class="status success">
-                                <div>
-                                    <strong>Room:</strong> <span id="currentRoom">-</span>
-                                </div>
-                                <div>
-                                    <strong>Devices:</strong> <span id="deviceCount">0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Live Clipboard -->
-                <div class="card">
-                    <div class="card__body">
-                        <h3 class="mb-8">Live Clipboard</h3>
-                        <textarea 
-                            class="form-control mb-8" 
-                            id="clipboardInput" 
-                            placeholder="Join a room to start syncing clipboard..."
-                            rows="8" 
-                            disabled></textarea>
-                        <div class="flex gap-8">
-                            <button class="btn btn--secondary" id="copyBtn" disabled>Copy</button>
-                            <button class="btn btn--outline" id="clearBtn" disabled>Clear</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Clipboard History -->
-            <div class="card mt-8">
-                <div class="card__body">
-                    <h3 class="mb-8">Recent Messages</h3>
-                    <div id="historyList">
-                        <!-- History will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- File Transfer Modal -->
-        <div class="modal hidden" id="transferModal">
+        <!-- Room Management -->
+        <div class="room-section">
             <div class="card">
-                <div class="card__body">
-                    <div class="flex justify-between items-center mb-8">
-                        <h3 id="modalTitle">File Transfer</h3>
-                        <button class="btn btn--outline" id="modalClose" style="padding: var(--space-4);">✕</button>
+                <div class="room-tabs">
+                    <button class="tab-btn active" data-tab="join">Join Room</button>
+                    <button class="tab-btn" data-tab="create">Create Room</button>
+                </div>
+
+                <!-- Join Room Tab -->
+                <div class="tab-content active" id="joinTab">
+                    <div class="form-group">
+                        <label for="roomCode">Enter Room Code</label>
+                        <div class="input-group">
+                            <input type="text" id="roomCode" placeholder="AB12" maxlength="4" class="form-control">
+                            <button id="joinBtn" class="btn btn--primary">Join</button>
+                        </div>
                     </div>
-                    <div id="modalBody">
-                        <!-- Modal content -->
+                </div>
+
+                <!-- Create Room Tab -->
+                <div class="tab-content" id="createTab">
+                    <div class="form-group">
+                        <button id="createBtn" class="btn btn--primary btn--full-width">🏗️ Create New Room</button>
+                        <p style="text-align: center; margin-top: 12px; color: var(--color-text-secondary); font-size: 14px;">
+                            Click to generate a 4-digit room code
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Room Status -->
+                <div id="roomStatus" class="room-status hidden">
+                    <div class="status-info">
+                        <span class="status-label">Connected to room:</span>
+                        <span id="currentRoomCode" class="room-code">-</span>
+                    </div>
+                    <div class="status-info">
+                        <span class="status-label">Devices online:</span>
+                        <span id="deviceCount" class="device-count">1</span>
+                    </div>
+                    <button id="leaveBtn" class="btn btn--outline btn--sm">Leave Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-section">
+            <div class="card">
+                <div class="form-group">
+                    <label for="messageInput">Your Message</label>
+                    <textarea id="messageInput" placeholder="Join a room to start sharing text..." rows="4" class="form-control" disabled></textarea>
+                </div>
+                <div class="message-actions">
+                    <button id="sendBtn" class="btn btn--primary" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22,2 15,22 11,13 2,9"/>
+                        </svg>
+                        Send to Room
+                    </button>
+                    <button id="pasteBtn" class="btn btn--outline" disabled>📋 Paste</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages List -->
+        <div class="messages-section">
+            <div class="card">
+                <h3>Live Messages</h3>
+                <div id="messagesList" class="messages-list">
+                    <div class="empty-state">
+                        <p>Join a room to see messages</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="connection-status">
+            <div class="status-indicator offline">
+                <div class="status-dot"></div>
+                <span>Starting...</span>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notifications" class="notifications"></div>
+    </div>
 
     <script src="app.js"></script>
 </body>
