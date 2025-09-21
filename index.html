@@ -3,103 +3,242 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clypse - Simple Clipboard Sync</title>
+    <title>Clypse - Cross-Device File & Clipboard Sharing</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <!-- Header -->
-        <header class="header">
-            <h1>Clypse</h1>
-            <p>Simple cross-device clipboard sync</p>
+        <header class="app-header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="brand">
+                        <h1 class="app-title">Clypse</h1>
+                        <p class="app-subtitle">Cross-device sharing made simple</p>
+                    </div>
+                    <button class="theme-toggle" id="themeToggle">
+                        <div class="toggle-track">
+                            <div class="toggle-thumb">
+                                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="5"/>
+                                    <line x1="12" y1="1" x2="12" y2="3"/>
+                                    <line x1="12" y1="21" x2="12" y2="23"/>
+                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                    <line x1="1" y1="12" x2="3" y2="12"/>
+                                    <line x1="21" y1="12" x2="23" y2="12"/>
+                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                                </svg>
+                                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
         </header>
 
-        <!-- Room Management -->
-        <div class="room-section">
-            <div class="card">
-                <div class="room-tabs">
-                    <button class="tab-btn active" data-tab="join">Join Room</button>
-                    <button class="tab-btn" data-tab="create">Create Room</button>
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <div class="container">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-tab="files">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                            <polyline points="13,2 13,9 20,9"/>
+                        </svg>
+                        File Sharing
+                    </button>
+                    <button class="nav-tab" data-tab="clipboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                        </svg>
+                        Clipboard Sync
+                    </button>
                 </div>
+            </div>
+        </nav>
 
-                <!-- Join Room Tab -->
-                <div class="tab-content active" id="joinTab">
-                    <div class="form-group">
-                        <label for="roomCode">Enter Room Code</label>
-                        <div class="input-group">
-                            <input type="text" id="roomCode" placeholder="AB12" maxlength="4" class="form-control">
-                            <button id="joinBtn" class="btn btn--primary">Join</button>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Files Tab -->
+                <div class="tab-content active" id="files-content">
+                    <div class="content-grid">
+                        <!-- File Upload -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Upload & Share Files</h3>
+                                <p class="subtitle">Up to 1.5GB per file via Telegraph</p>
+                            </div>
+                            <div class="card__body">
+                                <div class="upload-area" id="uploadArea">
+                                    <div class="upload-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                            <polyline points="7,10 12,15 17,10"/>
+                                            <line x1="12" y1="15" x2="12" y2="3"/>
+                                        </svg>
+                                    </div>
+                                    <p class="upload-text">Drop files here or <span class="upload-link">click to browse</span></p>
+                                    <p class="upload-limit">Files stored permanently on Telegraph servers</p>
+                                </div>
+                                <input type="file" id="fileInput" multiple style="display: none;">
+                                
+                                <!-- Upload Progress -->
+                                <div class="upload-progress hidden" id="uploadProgress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="progressFill"></div>
+                                    </div>
+                                    <p class="progress-text" id="progressText">Uploading...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Access -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Download with Code</h3>
+                                <p class="subtitle">Enter 4-digit code to download</p>
+                            </div>
+                            <div class="card__body">
+                                <div class="input-group">
+                                    <input type="text" class="form-control code-input" id="downloadCode" placeholder="A7K9" maxlength="4">
+                                    <button class="btn btn--primary" id="downloadBtn">Download</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Your Files -->
+                    <div class="card" id="filesSection">
+                        <div class="card__header">
+                            <h3>Your Uploaded Files</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="files-list" id="filesList">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                                        <polyline points="13,2 13,9 20,9"/>
+                                    </svg>
+                                    <p>No files uploaded yet</p>
+                                    <small>Upload files to start sharing across devices</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Create Room Tab -->
-                <div class="tab-content" id="createTab">
-                    <div class="form-group">
-                        <button id="createBtn" class="btn btn--primary btn--full-width">🏗️ Create New Room</button>
-                        <p style="text-align: center; margin-top: 12px; color: var(--color-text-secondary); font-size: 14px;">
-                            Click to generate a 4-digit room code
-                        </p>
+                <!-- Clipboard Tab -->
+                <div class="tab-content" id="clipboard-content">
+                    <div class="content-grid">
+                        <!-- Room Management -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Clipboard Room</h3>
+                                <p class="subtitle">Real-time sync via Firebase</p>
+                            </div>
+                            <div class="card__body">
+                                <div class="room-controls">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control code-input" id="roomCode" placeholder="AB12" maxlength="4">
+                                        <button class="btn btn--primary" id="joinRoomBtn">Join</button>
+                                    </div>
+                                    <button class="btn btn--secondary btn--full-width" id="createRoomBtn">Create New Room</button>
+                                </div>
+                                
+                                <!-- Room Status -->
+                                <div class="room-status hidden" id="roomStatus">
+                                    <div class="status status--success">
+                                        <div class="status-content">
+                                            <strong>Connected to Room: <code id="currentRoomCode">-</code></strong>
+                                            <small>Share this code with others to sync messages</small>
+                                        </div>
+                                        <button class="btn btn--sm btn--outline" id="leaveRoomBtn">Leave</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Message Area -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Send Message</h3>
+                                <p class="subtitle">Sync instantly across all connected devices</p>
+                            </div>
+                            <div class="card__body">
+                                <textarea 
+                                    class="form-control message-input" 
+                                    id="messageInput" 
+                                    placeholder="Join a room to start sharing messages..." 
+                                    disabled 
+                                    rows="4"></textarea>
+                                <div class="message-actions">
+                                    <button class="btn btn--primary" id="sendMessageBtn" disabled>Send to Room</button>
+                                    <button class="btn btn--secondary" id="copyMessageBtn" disabled>Copy Text</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages History -->
+                    <div class="card" id="messagesSection">
+                        <div class="card__header">
+                            <h3>Room Messages</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="messages-list" id="messagesList">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                    </svg>
+                                    <p>Join a room to see messages</p>
+                                    <small>Create or join a room to start syncing messages</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </main>
 
-                <!-- Room Status -->
-                <div id="roomStatus" class="room-status hidden">
-                    <div class="status-info">
-                        <span class="status-label">Connected to room:</span>
-                        <span id="currentRoomCode" class="room-code">-</span>
+        <!-- Toast Container -->
+        <div class="toast-container" id="toastContainer"></div>
+        
+        <!-- Share Modal -->
+        <div class="modal hidden" id="shareModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Share File</h3>
+                    <button class="modal-close" id="closeShareModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="share-info">
+                        <div class="share-item">
+                            <label>4-Digit Code:</label>
+                            <div class="code-display" id="shareCode">-</div>
+                        </div>
+                        <div class="share-item">
+                            <label>Share URL:</label>
+                            <div class="url-display" id="shareUrl">-</div>
+                        </div>
                     </div>
-                    <div class="status-info">
-                        <span class="status-label">Devices online:</span>
-                        <span id="deviceCount" class="device-count">1</span>
+                    <div class="modal-actions">
+                        <button class="btn btn--primary" id="copyCodeBtn">Copy Code</button>
+                        <button class="btn btn--secondary" id="copyUrlBtn">Copy URL</button>
                     </div>
-                    <button id="leaveBtn" class="btn btn--outline btn--sm">Leave Room</button>
                 </div>
             </div>
         </div>
-
-        <!-- Message Input -->
-        <div class="message-section">
-            <div class="card">
-                <div class="form-group">
-                    <label for="messageInput">Your Message</label>
-                    <textarea id="messageInput" placeholder="Join a room to start sharing text..." rows="4" class="form-control" disabled></textarea>
-                </div>
-                <div class="message-actions">
-                    <button id="sendBtn" class="btn btn--primary" disabled>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22,2 15,22 11,13 2,9"/>
-                        </svg>
-                        Send to Room
-                    </button>
-                    <button id="pasteBtn" class="btn btn--outline" disabled>📋 Paste</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Messages List -->
-        <div class="messages-section">
-            <div class="card">
-                <h3>Live Messages</h3>
-                <div id="messagesList" class="messages-list">
-                    <div class="empty-state">
-                        <p>Join a room to see messages</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Connection Status -->
-        <div id="connectionStatus" class="connection-status">
-            <div class="status-indicator offline">
-                <div class="status-dot"></div>
-                <span>Starting...</span>
-            </div>
-        </div>
-
-        <!-- Notifications -->
-        <div id="notifications" class="notifications"></div>
     </div>
 
     <script src="app.js"></script>
